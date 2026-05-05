@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>MaintEase Pro - Machine Maintenance Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@0.400.0/dist/umd/lucide.js"></script>
@@ -10,6 +10,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <!-- Chart.js for Dashboard Graph -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- HTML5 QR Scanner -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/dist/html5-qrcode.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
         body { font-family: 'Inter', sans-serif; }
@@ -17,10 +19,6 @@
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        .dragging { opacity: 0.4; background-color: #f1f5f9 !important; border: 2px dashed #3b82f6; }
-        .drag-over { border-top: 3px solid #3b82f6 !important; background-color: #eff6ff !important; }
-        .drag-handle { cursor: grab; padding: 4px; }
-        
         #print-template { display: none; }
         @media print {
             body * { visibility: hidden; }
@@ -32,7 +30,10 @@
         .pr-table { width: 100%; border-collapse: collapse; margin-top: 5px; }
         .pr-table th, .pr-table td { border: 1px solid black; padding: 6px; text-align: center; font-size: 10px; vertical-align: middle; }
         .pr-header { text-align: center; border: 1px solid black; padding: 10px; margin-bottom: -1px; position: relative; }
-        .qr-box { position: absolute; right: 10px; top: 10px; border: 1px solid #eee; padding: 2px; background: white; }
+        /* mobile bottom nav */
+        .bottom-nav a.active {
+            color: #2563eb;
+        }
     </style>
 
     <script type="module">
@@ -47,10 +48,10 @@
         }
     </script>
 </head>
-<body class="bg-slate-50 text-slate-900 min-h-screen flex text-sm">
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col text-sm">
 
-    <!-- Sidebar -->
-    <aside class="w-64 bg-slate-900 text-slate-400 hidden lg:flex flex-col flex-shrink-0 no-print">
+    <!-- Desktop Sidebar (hidden on mobile) -->
+    <aside class="w-64 bg-slate-900 text-slate-400 hidden lg:flex flex-col flex-shrink-0 fixed h-full no-print z-10">
         <div class="p-6 flex items-center space-x-3 text-white border-b border-slate-800/50">
             <div class="bg-blue-600 p-2 rounded-lg shadow-lg shadow-blue-500/20"><i data-lucide="settings" class="w-5 h-5"></i></div>
             <span class="font-bold tracking-tight text-lg">MaintEase Pro</span>
@@ -59,34 +60,58 @@
             <button onclick="switchView('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all bg-slate-800 text-white">
                 <i data-lucide="layout-dashboard" class="w-4 h-4"></i><span>Dashboard</span>
             </button>
-            <button onclick="switchView('machines')" id="nav-machines" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all hover:bg-slate-800/50 hover:text-slate-200">
+            <button onclick="switchView('machines')" id="nav-machines" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all hover:bg-slate-800/50">
                 <i data-lucide="hard-drive" class="w-4 h-4"></i><span>Machine List</span>
             </button>
-            <button onclick="switchView('repairs')" id="nav-repairs" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all hover:bg-slate-800/50 hover:text-slate-200">
+            <button onclick="switchView('repairs')" id="nav-repairs" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all hover:bg-slate-800/50">
                 <i data-lucide="wrench" class="w-4 h-4"></i><span>Repair Logs</span>
             </button>
-            <button onclick="switchView('amc')" id="nav-amc" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all hover:bg-slate-800/50 hover:text-slate-200">
+            <button onclick="switchView('amc')" id="nav-amc" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all hover:bg-slate-800/50">
                 <i data-lucide="clipboard-list" class="w-4 h-4"></i><span>AMC Tracking</span>
             </button>
             <div class="pt-8 pb-2 px-4 text-[10px] font-bold text-slate-600 uppercase tracking-[0.2em]">Asset Archives</div>
-            <button onclick="switchView('scrap')" id="nav-scrap" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all hover:bg-slate-800/50 hover:text-slate-200">
+            <button onclick="switchView('scrap')" id="nav-scrap" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all hover:bg-slate-800/50">
                 <i data-lucide="archive" class="w-4 h-4"></i><span>Scrap History</span>
             </button>
         </nav>
     </aside>
 
-    <!-- Main Content -->
-    <main class="flex-1 flex flex-col h-screen overflow-hidden no-print">
-        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 flex-shrink-0">
+    <!-- Main Content (with padding for mobile bottom nav) -->
+    <main class="flex-1 flex flex-col h-screen overflow-hidden no-print lg:ml-64 pb-16 lg:pb-0">
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 flex-shrink-0">
             <div id="breadcrumb" class="flex items-center space-x-2 text-slate-500 text-[10px] uppercase font-bold tracking-widest">
                 <span>SYSTEM</span><i data-lucide="chevron-right" class="w-3 h-3"></i><span id="current-view-title" class="text-slate-900 uppercase">DASHBOARD</span>
             </div>
-            <div class="flex items-center space-x-6">
+            <div class="flex items-center space-x-4">
                  <div class="relative cursor-pointer hover:bg-slate-50 p-2 rounded-full transition-colors"><i data-lucide="bell" class="w-4 h-4 text-slate-600"></i><span id="amc-alert-dot" class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-600 rounded-full border-2 border-white hidden"></span></div>
             </div>
         </header>
-        <div id="content-area" class="flex-1 overflow-y-auto p-8 bg-[#F8FAFC] custom-scrollbar"></div>
+        <div id="content-area" class="flex-1 overflow-y-auto p-4 md:p-8 bg-[#F8FAFC] custom-scrollbar"></div>
     </main>
+
+    <!-- Mobile Bottom Navigation (visible only on small screens) -->
+    <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around items-center py-2 px-2 z-50 lg:hidden no-print shadow-lg">
+        <button onclick="switchView('dashboard')" class="flex flex-col items-center text-slate-500 transition-colors bottom-nav-btn" id="mobile-nav-dashboard">
+            <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+            <span class="text-[9px] font-bold mt-0.5">Home</span>
+        </button>
+        <button onclick="switchView('machines')" class="flex flex-col items-center text-slate-500 transition-colors bottom-nav-btn" id="mobile-nav-machines">
+            <i data-lucide="hard-drive" class="w-5 h-5"></i>
+            <span class="text-[9px] font-bold mt-0.5">Machines</span>
+        </button>
+        <button onclick="switchView('repairs')" class="flex flex-col items-center text-slate-500 transition-colors bottom-nav-btn" id="mobile-nav-repairs">
+            <i data-lucide="wrench" class="w-5 h-5"></i>
+            <span class="text-[9px] font-bold mt-0.5">Repairs</span>
+        </button>
+        <button onclick="switchView('amc')" class="flex flex-col items-center text-slate-500 transition-colors bottom-nav-btn" id="mobile-nav-amc">
+            <i data-lucide="clipboard-list" class="w-5 h-5"></i>
+            <span class="text-[9px] font-bold mt-0.5">AMC</span>
+        </button>
+        <button onclick="switchView('scrap')" class="flex flex-col items-center text-slate-500 transition-colors bottom-nav-btn" id="mobile-nav-scrap">
+            <i data-lucide="archive" class="w-5 h-5"></i>
+            <span class="text-[9px] font-bold mt-0.5">Scrap</span>
+        </button>
+    </div>
 
     <div id="modal-container" class="fixed inset-0 modal-bg z-50 flex items-center justify-center p-4 hidden no-print"></div>
     <div id="print-template"></div>
@@ -113,7 +138,7 @@
             return diff <= state.amcAlertDays && diff > 0;
         }
 
-        // --- Supabase Sync Helpers ---
+        // --- Supabase Sync Helpers (unchanged) ---
         function getSb() { return window.SupabaseClient || null; }
         function throwIfSbError(res, context) {
             if (res && res.error) throw new Error(`${context}: ${res.error.message || 'Unknown Supabase error'}`);
@@ -307,9 +332,14 @@
         function switchView(viewId) {
             state.currentView = viewId;
             state.activeAuditId = null;
+            // update desktop nav
             document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('bg-slate-800', 'text-white'));
             const activeBtn = document.getElementById(`nav-${viewId}`);
             if (activeBtn) activeBtn.classList.add('bg-slate-800', 'text-white');
+            // update mobile bottom nav style
+            document.querySelectorAll('.bottom-nav-btn').forEach(btn => btn.classList.remove('text-blue-600'));
+            const mobileBtn = document.getElementById(`mobile-nav-${viewId}`);
+            if (mobileBtn) mobileBtn.classList.add('text-blue-600');
             document.getElementById('current-view-title').textContent = viewId.toUpperCase();
             render();
         }
@@ -354,7 +384,6 @@
                     </div>
                     
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <!-- Chart Area -->
                         <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                             <div class="flex items-center justify-between mb-6">
                                 <h3 class="font-bold text-slate-800 uppercase tracking-widest text-xs flex items-center gap-2">
@@ -366,33 +395,23 @@
                                 <canvas id="repairTrendChart"></canvas>
                             </div>
                         </div>
-
-                        <!-- Info Panel -->
                         <div class="lg:col-span-1 space-y-4">
                             <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                                 <h3 class="font-bold text-slate-800 uppercase tracking-widest text-xs mb-4">System Status</h3>
                                 <div class="space-y-4">
                                     <div class="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
-                                        <div class="flex items-center gap-3">
-                                            <div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-                                            <span class="text-xs font-bold text-blue-700 uppercase">Operational</span>
-                                        </div>
+                                        <div class="flex items-center gap-3"><div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div><span class="text-xs font-bold text-blue-700 uppercase">Operational</span></div>
                                         <span class="text-xs font-black text-blue-800">${Math.round((active/(active+repairs+0.001))*100)}%</span>
                                     </div>
                                     <div class="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-100">
-                                        <div class="flex items-center gap-3">
-                                            <div class="w-2 h-2 rounded-full bg-orange-500"></div>
-                                            <span class="text-xs font-bold text-orange-700 uppercase">Downtime</span>
-                                        </div>
+                                        <div class="flex items-center gap-3"><div class="w-2 h-2 rounded-full bg-orange-500"></div><span class="text-xs font-bold text-orange-700 uppercase">Downtime</span></div>
                                         <span class="text-xs font-black text-orange-800">${Math.round((repairs/(active+repairs+0.001))*100)}%</span>
                                     </div>
                                 </div>
                             </div>
                             <div class="bg-slate-900 p-6 rounded-2xl shadow-xl shadow-slate-200">
                                 <h3 class="text-white font-bold uppercase tracking-widest text-[10px] mb-2 opacity-60">Maintenance Protocol</h3>
-                                <p class="text-slate-300 text-xs leading-relaxed">
-                                    All breakdown entries automatically generate QR-coded <span class="text-blue-400">Machine Repair Notes</span> based on your current strategy.
-                                </p>
+                                <p class="text-slate-300 text-xs leading-relaxed">All breakdown entries automatically generate QR-coded Machine Repair Notes.</p>
                             </div>
                         </div>
                     </div>
@@ -402,65 +421,24 @@
         function initRepairTrendChart() {
             const ctx = document.getElementById('repairTrendChart');
             if (!ctx) return;
-
-            // Generate last 6 months labels
             const labels = [];
             const data = [];
             const activeCount = state.machines.filter(m => m.status === 'Active').length || 1;
-
             for (let i = 5; i >= 0; i--) {
                 const d = new Date();
                 d.setMonth(d.getMonth() - i);
                 const monthName = d.toLocaleString('default', { month: 'short' });
                 labels.push(monthName);
-
-                // Sample calculation: Count repairs where sentToStore matches this month
                 const monthRepairs = state.repairs.filter(r => {
                     const rDate = new Date(r.sentToStore);
                     return rDate.getMonth() === d.getMonth() && rDate.getFullYear() === d.getFullYear();
                 }).length;
-
-                // Percentage calculation: (Repairs / Active Machines) * 100
                 data.push((monthRepairs / activeCount) * 100);
             }
-
             new Chart(ctx, {
                 type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Repair %',
-                        data: data,
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        fill: true,
-                        tension: 0.4,
-                        borderWidth: 3,
-                        pointRadius: 4,
-                        pointBackgroundColor: '#fff',
-                        pointBorderColor: '#3b82f6',
-                        pointBorderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 100,
-                            ticks: { font: { size: 10 }, callback: v => v + '%' },
-                            grid: { borderDash: [5, 5], color: '#f1f5f9' }
-                        },
-                        x: {
-                            grid: { display: false },
-                            ticks: { font: { size: 10, weight: '600' } }
-                        }
-                    }
-                }
+                data: { labels, datasets: [{ label: 'Repair %', data, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4, pointBackgroundColor: '#fff', pointBorderColor: '#3b82f6' }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } }, x: { grid: { display: false } } } }
             });
         }
 
@@ -469,33 +447,19 @@
             return `
                 <div class="space-y-4">
                     <div class="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                        <div class="relative max-w-sm w-full">
-                            <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4"></i>
-                            <input type="text" placeholder="Filter machinery..." class="w-full pl-10 pr-4 py-2 bg-slate-50 border rounded text-sm shadow-sm outline-none">
-                        </div>
-                        <button onclick="openAddModal()" class="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-bold flex items-center space-x-2 shadow-lg hover:bg-blue-700 transition-all">
-                            <i data-lucide="plus" class="w-4 h-4"></i>
-                            <span>New Machine</span>
-                        </button>
+                        <div class="relative max-w-sm w-full"><i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4"></i><input type="text" placeholder="Filter machinery..." class="w-full pl-10 pr-4 py-2 bg-slate-50 border rounded text-sm shadow-sm outline-none"></div>
+                        <button onclick="openAddModal()" class="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-bold flex items-center space-x-2 shadow-lg hover:bg-blue-700 transition-all"><i data-lucide="plus" class="w-4 h-4"></i><span>New Machine</span></button>
                     </div>
                     <div class="bg-white rounded-xl border overflow-hidden shadow-sm">
                         <table class="w-full text-left">
-                            <thead class="bg-slate-50 text-[10px] uppercase font-bold text-slate-500 tracking-widest border-b">
-                                <tr><th class="px-6 py-4">Machine Name</th><th class="px-6 py-4">Internal SR No</th><th class="px-6 py-4">Custodian</th><th class="px-6 py-4 text-center">Audit</th></tr>
-                            </thead>
+                            <thead class="bg-slate-50 text-[10px] uppercase font-bold text-slate-500 tracking-widest border-b"><tr><th class="px-6 py-4">Machine Name</th><th class="px-6 py-4">Internal SR No</th><th class="px-6 py-4">Custodian</th><th class="px-6 py-4 text-center">Audit</th></tr></thead>
                             <tbody class="divide-y text-sm">
                                 ${machines.map(m => `
                                     <tr class="hover:bg-slate-50">
                                         <td class="px-6 py-4 font-bold text-slate-900">${m.name}<br><span class="text-xs text-slate-400 font-normal">${m.make} ${m.model}</span></td>
                                         <td class="px-6 py-4 font-mono text-xs text-slate-600">${m.srNo}</td>
                                         <td class="px-6 py-4 text-slate-600">${m.custodian}</td>
-                                        <td class="px-6 py-4 text-center">
-                                            <div class="flex justify-center space-x-2">
-                                                <button onclick="openEditMachineModal('${m.id}')" class="p-2 text-slate-400 hover:text-slate-900 transition-all" title="Edit / Transfer"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
-                                                <button onclick="renderDeepDive('${m.id}')" class="p-2 text-slate-400 hover:text-blue-600 transition-all" title="Audit Trail"><i data-lucide="eye" class="w-4 h-4"></i></button>
-                                                <button onclick="openScrapModal('${m.id}')" class="p-2 text-slate-400 hover:text-red-600 transition-all" title="Scrap Asset"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                                            </div>
-                                        </td>
+                                        <td class="px-6 py-4 text-center"><div class="flex justify-center space-x-2"><button onclick="openEditMachineModal('${m.id}')" class="p-2 text-slate-400 hover:text-slate-900"><i data-lucide="edit-2" class="w-4 h-4"></i></button><button onclick="renderDeepDive('${m.id}')" class="p-2 text-slate-400 hover:text-blue-600"><i data-lucide="eye" class="w-4 h-4"></i></button><button onclick="openScrapModal('${m.id}')" class="p-2 text-slate-400 hover:text-red-600"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></td>
                                     </tr>`).join('')}
                             </tbody>
                         </table>
@@ -503,7 +467,70 @@
                 </div>`;
         }
 
-        // --- Repair Log Handlers ---
+        // --- Auto-fill repair form fields based on machine ID ---
+        function fillRepairFormFromMachine(machineId) {
+            const m = getMachine(machineId);
+            if (!m) return false;
+            // set the select dropdown value
+            const selectEl = document.getElementById('r-machine-id');
+            if (selectEl) {
+                selectEl.value = machineId;
+                // trigger onchange to fill auto fields
+                if (typeof autoFillMachineDetails === 'function') autoFillMachineDetails();
+            }
+            return true;
+        }
+
+        // --- QR Scanner for Repair Log (opens modal, scans, fills form) ---
+        let repairScanner = null;
+        function openRepairScannerModal() {
+            const modal = document.getElementById('modal-container');
+            modal.innerHTML = `
+                <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+                    <div class="p-4 bg-slate-900 text-white flex justify-between items-center">
+                        <span class="font-bold flex gap-2"><i data-lucide="scan-line" class="w-5 h-5"></i> Scan Machine QR Code</span>
+                        <button onclick="closeModal()"><i data-lucide="x" class="w-5 h-5"></i></button>
+                    </div>
+                    <div class="p-4">
+                        <div id="repair-qr-reader" style="width:100%; min-height:300px;"></div>
+                        <div id="repair-qr-error" class="text-red-600 text-xs text-center mt-3 hidden"></div>
+                        <div class="mt-4 text-center text-xs text-slate-400">Position the machine QR code inside the frame.</div>
+                        <div class="mt-2 flex justify-center"><button onclick="closeModal()" class="bg-slate-200 px-4 py-2 rounded">Cancel</button></div>
+                    </div>
+                </div>`;
+            modal.classList.remove('hidden');
+            if (window.lucide) window.lucide.createIcons();
+
+            const qrContainer = document.getElementById('repair-qr-reader');
+            if (!qrContainer) return;
+            repairScanner = new Html5Qrcode("repair-qr-reader");
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            repairScanner.start({ facingMode: "environment" }, config, (decodedText) => {
+                // on success
+                if (repairScanner) repairScanner.stop().catch(e=>console.warn);
+                closeModal();
+                // extract machine ID from QR (format: "MID:xxxxx" or fallback)
+                let machineId = null;
+                const midMatch = decodedText.match(/MID:(\S+)/);
+                if (midMatch && midMatch[1]) machineId = midMatch[1];
+                else {
+                    // try to find by repair ID or name
+                    const repairMatch = decodedText.match(/MR:(\S+)/);
+                    if (repairMatch && repairMatch[1]) {
+                        const rep = getRepair(repairMatch[1]);
+                        if (rep) machineId = rep.machineId;
+                    }
+                }
+                if (machineId && getMachine(machineId)) {
+                    fillRepairFormFromMachine(machineId);
+                    alert("Machine details filled successfully!");
+                } else {
+                    alert("QR code does not contain a valid machine ID. Please scan a machine QR.");
+                }
+            }, (err) => { /* silent */ });
+        }
+
+        // --- Repair Log View (with QR scan button) ---
         function autoFillMachineDetails() {
             const select = document.getElementById('r-machine-id');
             if (!select) return;
@@ -520,7 +547,10 @@
             return `
                 <div class="space-y-6">
                     <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                        <h3 class="font-bold text-lg text-slate-800 mb-6 flex items-center space-x-2"><i data-lucide="file-plus" class="w-5 h-5 text-blue-500"></i><span>New Entry</span></h3>
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="font-bold text-lg text-slate-800 flex items-center space-x-2"><i data-lucide="file-plus" class="w-5 h-5 text-blue-500"></i><span>New Entry</span></h3>
+                            <button type="button" onclick="openRepairScannerModal()" class="bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 border border-indigo-200"><i data-lucide="scan-line" class="w-4 h-4"></i> Scan QR to fill machine</button>
+                        </div>
                         <form onsubmit="handleLogRepair(event)" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             <div class="space-y-1"><label class="text-[10px] font-bold text-slate-400 uppercase">Select Machine</label><select id="r-machine-id" required onchange="autoFillMachineDetails()" class="w-full p-2 bg-slate-50 border rounded text-sm">${machines.map(m => `<option value="${m.id}">${m.name} (${m.srNo})</option>`).join('')}</select></div>
                             <div class="space-y-1"><label class="text-[10px] font-bold text-slate-400 uppercase">Strategy</label><select id="r-type" required class="w-full p-2 bg-slate-50 border rounded text-sm"><option value="In-House">In-House (Machine Repair Note)</option><option value="Outsourced" selected>Outsourced (PR)</option></select></div>
@@ -546,21 +576,14 @@
                         <div class="p-4 bg-slate-50 border-b flex justify-between items-center font-bold text-[10px] text-slate-400 uppercase">Active Repair Audit Log</div>
                         <div class="overflow-x-auto">
                             <table class="w-full text-left border-collapse">
-                                <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase font-bold border-b">
-                                    <tr><th class="px-6 py-4">Asset</th><th class="px-6 py-4">Status & Diagnosis</th><th class="px-6 py-4 text-center">Dates</th><th class="px-6 py-4 text-center">Actions</th></tr>
-                                </thead>
+                                <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase font-bold border-b"><tr><th class="px-6 py-4">Asset</th><th class="px-6 py-4">Status & Diagnosis</th><th class="px-6 py-4 text-center">Dates</th><th class="px-6 py-4 text-center">Actions</th></tr></thead>
                                 <tbody class="divide-y text-sm">
                                     ${state.repairs.slice().reverse().map(r => `
                                         <tr class="hover:bg-slate-50 transition-colors">
                                             <td class="px-6 py-4"><p class="font-bold text-slate-900">${getMachine(r.machineId)?.name || 'Asset'}</p><span class="text-[9px] font-black px-1.5 py-0.5 rounded border ${r.repairType === 'In-House' ? 'text-purple-600 border-purple-100 bg-purple-50' : 'text-blue-600 border-blue-100 bg-blue-50'} uppercase">${r.repairType}</span></td>
                                             <td class="px-6 py-4"><p class="text-xs text-slate-600 truncate max-w-xs">${r.problem}</p>${r.actualProblem ? `<p class="text-[10px] mt-1 text-blue-600 font-bold">Diagnosis: ${r.actualProblem}</p>` : ''}</td>
                                             <td class="px-6 py-4 text-[10px] text-slate-500 text-center">Sent: ${r.sentToStore}<br><b class="text-blue-600">Req: ${r.requireDate}</b></td>
-                                            <td class="px-6 py-4 text-center">
-                                                <div class="flex justify-center items-center space-x-2">
-                                                    <button onclick="printFormalNote('${r.id}')" class="p-2 text-slate-400 hover:text-blue-600 transition-all"><i data-lucide="printer" class="w-4 h-4"></i></button>
-                                                    <button onclick="openReceiveModal('${r.id}')" class="p-2 text-slate-400 hover:text-green-600 ${r.status === 'Completed' ? 'hidden' : ''}"><i data-lucide="check-circle" class="w-4 h-4"></i></button>
-                                                </div>
-                                            </td>
+                                            <td class="px-6 py-4 text-center"><div class="flex justify-center items-center space-x-2"><button onclick="printFormalNote('${r.id}')" class="p-2 text-slate-400 hover:text-blue-600"><i data-lucide="printer" class="w-4 h-4"></i></button><button onclick="openReceiveModal('${r.id}')" class="p-2 text-slate-400 hover:text-green-600 ${r.status === 'Completed' ? 'hidden' : ''}"><i data-lucide="check-circle" class="w-4 h-4"></i></button></div></td>
                                         </tr>`).join('')}
                                 </tbody>
                             </table>
@@ -570,41 +593,14 @@
         }
 
         function renderAmcTracking(machines) {
-            return `
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div class="lg:col-span-1 bg-white p-6 rounded-xl border shadow-sm h-fit">
-                        <h3 class="font-bold text-lg mb-6 flex items-center space-x-2 text-slate-800"><i data-lucide="shield-check" class="text-blue-500"></i><span>AMC Job Card</span></h3>
-                        <form onsubmit="handleLogAmcJob(event)" class="space-y-4">
-                            <div class="space-y-1"><label class="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Machine</label><select id="amc-machine-id" required class="w-full p-2.5 bg-slate-50 border rounded text-sm">${machines.map(m => `<option value="${m.id}">${m.name} (${m.srNo})</option>`).join('')}</select></div>
-                            <div class="space-y-1"><label class="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Technician / Visited Agency</label><input id="amc-tech" required type="text" class="w-full p-2.5 bg-slate-50 border rounded text-sm"></div>
-                            <div class="space-y-1"><label class="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Date</label><input id="amc-date" type="date" value="${new Date().toISOString().split('T')[0]}" class="w-full p-2.5 border rounded text-sm"></div>
-                            <div class="space-y-1"><label class="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Job Done Details</label><textarea id="amc-work" required rows="3" class="w-full p-2.5 border rounded text-sm"></textarea></div>
-                            <div class="p-3 bg-blue-50 rounded border border-blue-100"><label class="text-[10px] font-bold text-blue-600 uppercase">Mark Next AMC Date</label><input id="amc-next" required type="date" class="w-full p-2 mt-1 bg-white border rounded text-sm"></div>
-                            <button type="submit" class="w-full py-2.5 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition-all">Submit Job Card</button>
-                        </form>
-                    </div>
-                    <div class="lg:col-span-2 bg-white rounded-xl border shadow-sm overflow-hidden h-fit">
-                        <div class="p-4 bg-slate-50 border-b font-bold text-[10px] uppercase text-slate-400 tracking-widest">AMC Audit History</div>
-                        <div class="divide-y divide-slate-100 max-h-[550px] overflow-y-auto custom-scrollbar">
-                            ${state.amcJobs.slice().reverse().map(j => `<div class="p-5 hover:bg-slate-50 transition-colors"><div class="flex justify-between mb-2"><div><p class="font-bold text-slate-900">${getMachine(j.machineId)?.name || 'Asset'}</p><p class="text-[10px] text-slate-400 uppercase font-bold tracking-tight">Technician: ${j.technician}</p></div><p class="text-xs font-black text-slate-400">${j.date}</p></div><p class="text-xs text-slate-600 italic leading-relaxed">"${j.workDone}"</p></div>`).join('') || '<p class="p-12 text-center text-slate-400 italic">No job cards logged yet.</p>'}
-                        </div>
-                    </div>
-                </div>`;
+            return `<div class="grid grid-cols-1 lg:grid-cols-3 gap-6"><div class="lg:col-span-1 bg-white p-6 rounded-xl border shadow-sm h-fit"><h3 class="font-bold text-lg mb-6 flex items-center space-x-2 text-slate-800"><i data-lucide="shield-check" class="text-blue-500"></i><span>AMC Job Card</span></h3><form onsubmit="handleLogAmcJob(event)" class="space-y-4"><div class="space-y-1"><label class="text-[10px] font-bold uppercase text-slate-400">Machine</label><select id="amc-machine-id" required class="w-full p-2.5 bg-slate-50 border rounded text-sm">${machines.map(m => `<option value="${m.id}">${m.name} (${m.srNo})</option>`).join('')}</select></div><div class="space-y-1"><label class="text-[10px] font-bold uppercase text-slate-400">Technician / Visited Agency</label><input id="amc-tech" required type="text" class="w-full p-2.5 bg-slate-50 border rounded text-sm"></div><div class="space-y-1"><label class="text-[10px] font-bold uppercase text-slate-400">Date</label><input id="amc-date" type="date" value="${new Date().toISOString().split('T')[0]}" class="w-full p-2.5 border rounded text-sm"></div><div class="space-y-1"><label class="text-[10px] font-bold uppercase text-slate-400">Job Done Details</label><textarea id="amc-work" required rows="3" class="w-full p-2.5 border rounded text-sm"></textarea></div><div class="p-3 bg-blue-50 rounded border border-blue-100"><label class="text-[10px] font-bold text-blue-600 uppercase">Mark Next AMC Date</label><input id="amc-next" required type="date" class="w-full p-2 mt-1 bg-white border rounded text-sm"></div><button type="submit" class="w-full py-2.5 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700">Submit Job Card</button></form></div><div class="lg:col-span-2 bg-white rounded-xl border shadow-sm overflow-hidden h-fit"><div class="p-4 bg-slate-50 border-b font-bold text-[10px] uppercase text-slate-400">AMC Audit History</div><div class="divide-y divide-slate-100 max-h-[550px] overflow-y-auto custom-scrollbar">${state.amcJobs.slice().reverse().map(j => `<div class="p-5 hover:bg-slate-50"><div class="flex justify-between mb-2"><div><p class="font-bold text-slate-900">${getMachine(j.machineId)?.name || 'Asset'}</p><p class="text-[10px] text-slate-400 uppercase font-bold">Technician: ${j.technician}</p></div><p class="text-xs font-black text-slate-400">${j.date}</p></div><p class="text-xs text-slate-600 italic">"${j.workDone}"</p></div>`).join('') || '<p class="p-12 text-center text-slate-400 italic">No job cards logged yet.</p>'}</div></div></div>`;
         }
 
         function renderScrapHistory(scrapped) {
-            return `
-                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                    <table class="w-full text-left">
-                        <thead class="bg-slate-50 text-[10px] uppercase font-bold border-b tracking-widest text-slate-500"><tr><th class="px-6 py-4">Machine</th><th class="px-6 py-4 text-center">Scrap Date</th><th class="px-6 py-4 text-center">Audit</th></tr></thead>
-                        <tbody class="divide-y divide-slate-100 text-sm">
-                            ${scrapped.map(m => `<tr><td class="px-6 py-4 font-bold text-slate-700">${m.name}<br><span class="text-xs font-mono text-slate-400">${m.srNo}</span></td><td class="px-6 py-4 text-center font-bold text-red-700 text-xs">${m.scrapDate}</td><td class="px-6 py-4 text-center"><button onclick="renderDeepDive('${m.id}')" class="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-sm hover:bg-slate-800 transition-all">Audit Trail</button></td></tr>`).join('') || '<tr><td colspan="3" class="p-10 text-center text-slate-400 italic">Empty Archives.</td></tr>'}
-                        </tbody>
-                    </table>
-                </div>`;
+            return `<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"><table class="w-full text-left"><thead class="bg-slate-50 text-[10px] uppercase font-bold border-b tracking-widest text-slate-500"><tr><th class="px-6 py-4">Machine</th><th class="px-6 py-4 text-center">Scrap Date</th><th class="px-6 py-4 text-center">Audit</th></tr></thead><tbody class="divide-y divide-slate-100 text-sm">${scrapped.map(m => `<tr><td class="px-6 py-4 font-bold text-slate-700">${m.name}<br><span class="text-xs font-mono text-slate-400">${m.srNo}</span></td><td class="px-6 py-4 text-center font-bold text-red-700 text-xs">${m.scrapDate}</td><td class="px-6 py-4 text-center"><button onclick="renderDeepDive('${m.id}')" class="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-sm hover:bg-slate-800">Audit Trail</button></td></tr>`).join('') || '<tr><td colspan="3" class="p-10 text-center text-slate-400 italic">Empty Archives.</td></tr>'}</tbody></table></div>`;
         }
 
-        // --- Core Logic ---
+        // --- Core Logic (handleLogRepair etc.) kept same but need to reference state ---
         async function handleLogRepair(e) {
             e.preventDefault();
             const m = getMachine(document.getElementById('r-machine-id').value);
@@ -634,144 +630,50 @@
             const today = new Date().toLocaleDateString('en-GB');
             const isOut = r.repairType === 'Outsourced';
             const reqLabel = isOut ? 'Requisition No' : 'Repair Note Number';
-
-            let tableHtml = isOut ? `
-                <thead><tr><th>Sr</th><th>Machine Name</th><th>Detailed Problem</th><th>Make Name</th><th>SR No</th><th>Qty</th><th>Unit</th><th>Rate</th><th>Amount</th><th>Tentative Require Date</th></tr></thead>
-                <tbody><tr><td>1</td><td>${m.name}</td><td>${r.problem}</td><td>${r.makeAuto}</td><td>${r.srNoAuto}</td><td>1</td><td>Nos</td><td>${r.rate}</td><td>${r.amount}</td><td>${r.requireDate}</td></tr></tbody>
-            ` : `
-                <thead><tr><th>Sr</th><th>Internal SR No.</th><th>Machine Name</th><th>Make</th><th>OEM Sr No</th><th>Qty</th><th>Unit</th><th>Initiator By</th><th>Problem Reported By</th><th>Tentative Require Date</th><th>Remarks</th></tr></thead>
-                <tbody><tr><td>1</td><td>${r.srNoAuto}</td><td>${m.name}</td><td>${r.makeAuto}</td><td>${r.oemAuto}</td><td>1</td><td>Nos</td><td>${r.initiatorName}</td><td>${r.probReportBy}</td><td>${r.requireDate}</td><td>${r.remarks || '-'}</td></tr></tbody>
-            `;
-
-            document.getElementById('print-template').innerHTML = `
-                <div style="width: 100%; border: 2px solid black; background: white; padding: 1px;">
-                    <div class="pr-header" style="border: none;">
-                        <h1 style="font-size: 24px; font-weight: 800; margin: 0; text-transform: uppercase; text-align: center;">Indus Fire Safety Pvt. Ltd.</h1>
-                        <p style="font-size: 10px; margin: 2px 0; text-align: center;">Block No. 501, Opp. GSFC Main Gate, Dashrath, Vadodara, GUJARAT- 391740</p>
-                        <table style="position: absolute; right: 10px; top: 10px; width: 66px; height: 66px; border: 1px solid #ddd;"><tr><td id="qr-code-placeholder" style="padding: 2px; border: none;"></td></tr></table>
-                    </div>
-                    <div style="text-align: center; border: 1px solid black; background: #f0f0f0; font-weight: 900; padding: 5px; font-size: 16px; border-top: 2px solid black;">MACHINE REPAIR NOTE</div>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <tr><td style="border: 1px solid black; padding: 6px; font-size: 11px; width: 33%;"><b>${reqLabel}:</b> ${r.id}</td><td style="border: 1px solid black; padding: 6px; font-size: 11px; width: 33%;"><b>DATE:</b> ${today}</td><td style="border: 1px solid black; padding: 6px; font-size: 11px; width: 34%;"><b>STATUS:</b> ${r.status}</td></tr>
-                        <tr><td style="border: 1px solid black; padding: 6px; font-size: 11px;"><b>Custodian Name:</b> ${r.custodianAuto}</td><td colspan="2" style="border: 1px solid black; padding: 6px; font-size: 11px;"><b>Initiator Name:</b> ${r.initiatorName}</td></tr>
-                    </table>
-                    <table class="pr-table">${tableHtml}</table>
-                    <div style="display: flex; border-top: 1px solid black; height: 130px;">
-                        <div style="flex: 1; border-right: 1px solid black; padding: 10px; font-size: 11px;"><p style="text-decoration: underline; font-weight: bold; margin-bottom: 30px;">Requested By / Prepared By:</p>Name: ${r.initiatorName}<br>Date: ${today}</div>
-                        <div style="flex: 1; border-right: 1px solid black; padding: 10px; font-size: 11px;"><p style="text-decoration: underline; font-weight: bold; margin-bottom: 30px;">Checked By:</p>Name: ${r.checkedBy}</div>
-                        <div style="flex: 1; padding: 10px; font-size: 11px;"><p style="text-decoration: underline; font-weight: bold; margin-bottom: 30px;">Approved By:</p></div>
-                    </div>
-                </div>`;
-            
-            new QRCode(document.getElementById("qr-code-placeholder"), {
-                text: `MR: ${r.id}\nMachine: ${m.name}\nSR: ${r.srNoAuto}\nProb: ${r.problem}`,
-                width: 60, height: 60, correctLevel : QRCode.CorrectLevel.H
-            });
-
+            let tableHtml = isOut ? `<thead><tr><th>Sr</th><th>Machine Name</th><th>Detailed Problem</th><th>Make Name</th><th>SR No</th><th>Qty</th><th>Unit</th><th>Rate</th><th>Amount</th><th>Tentative Require Date</th></tr></thead><tbody><tr><td>1</td><td>${m.name}</td><td>${r.problem}</td><td>${r.makeAuto}</td><td>${r.srNoAuto}</td><td>1</td><td>Nos</td><td>${r.rate}</td><td>${r.amount}</td><td>${r.requireDate}</td></tr></tbody>` : `<thead><tr><th>Sr</th><th>Internal SR No.</th><th>Machine Name</th><th>Make</th><th>OEM Sr No</th><th>Qty</th><th>Unit</th><th>Initiator By</th><th>Problem Reported By</th><th>Tentative Require Date</th><th>Remarks</th></tr></thead><tbody><tr><td>1</td><td>${r.srNoAuto}</td><td>${m.name}</td><td>${r.makeAuto}</td><td>${r.oemAuto}</td><td>1</td><td>Nos</td><td>${r.initiatorName}</td><td>${r.probReportBy}</td><td>${r.requireDate}</td><td>${r.remarks || '-'}</td></tr></tbody>`;
+            document.getElementById('print-template').innerHTML = `<div style="width:100%; border:2px solid black; background:white; padding:1px;"><div class="pr-header" style="border:none;"><h1 style="font-size:24px; font-weight:800; text-align:center;">Indus Fire Safety Pvt. Ltd.</h1><p style="font-size:10px; text-align:center;">Block No. 501, Opp. GSFC Main Gate, Dashrath, Vadodara, GUJARAT- 391740</p><div style="position:absolute; right:10px; top:10px; width:66px; height:66px; border:1px solid #ddd;"><div id="qr-code-placeholder"></div></div></div><div style="text-align:center; border:1px solid black; background:#f0f0f0; font-weight:900; padding:5px;">MACHINE REPAIR NOTE</div><table style="width:100%; border-collapse:collapse;"><tr><td style="border:1px solid black; padding:6px;"><b>${reqLabel}:</b> ${r.id}</td><td style="border:1px solid black; padding:6px;"><b>DATE:</b> ${today}</td><td style="border:1px solid black; padding:6px;"><b>STATUS:</b> ${r.status}</td></tr><tr><td style="border:1px solid black; padding:6px;"><b>Custodian Name:</b> ${r.custodianAuto}</td><td colspan="2" style="border:1px solid black; padding:6px;"><b>Initiator Name:</b> ${r.initiatorName}</td></tr></table><table class="pr-table">${tableHtml}</table><div style="display:flex; border-top:1px solid black; height:130px;"><div style="flex:1; border-right:1px solid black; padding:10px;"><p style="text-decoration:underline; font-weight:bold;">Requested By / Prepared By:</p>Name: ${r.initiatorName}<br>Date: ${today}</div><div style="flex:1; border-right:1px solid black; padding:10px;"><p style="text-decoration:underline; font-weight:bold;">Checked By:</p>Name: ${r.checkedBy}</div><div style="flex:1; padding:10px;"><p style="text-decoration:underline; font-weight:bold;">Approved By:</p></div></div></div>`;
+            new QRCode(document.getElementById("qr-code-placeholder"), { text: `MID:${m.id}\nMR: ${r.id}\nMachine: ${m.name}\nSR: ${r.srNoAuto}`, width: 60, height: 60, correctLevel: QRCode.CorrectLevel.H });
             setTimeout(() => { window.print(); }, 500);
         }
 
-        // --- Modals ---
+        // --- Modals (unchanged except closeModal may need to stop scanner) ---
         function openEditMachineModal(id) {
             const m = getMachine(id);
             const modal = document.getElementById('modal-container');
-            modal.innerHTML = `
-                <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-slate-200">
-                    <div class="p-6 bg-slate-50 border-b flex justify-between items-center font-bold text-xl">Asset Transfer / Edit<button onclick="closeModal()"><i data-lucide="x" class="w-6 h-6"></i></button></div>
-                    <form onsubmit="handleEditMachineSubmit(event, '${id}')" class="p-8 space-y-4">
-                        <div class="space-y-1"><label class="text-[10px] font-bold uppercase text-slate-400">Transfer To (Custodian Name)</label><input required id="edit-m-cust" type="text" value="${m.custodian}" class="w-full p-2.5 border rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none"></div>
-                        <div class="space-y-1"><label class="text-[10px] font-bold uppercase text-slate-400">Asset Identity</label><input required id="edit-m-name" type="text" value="${m.name}" class="w-full p-2.5 border rounded text-sm outline-none focus:ring-2 focus:ring-blue-500"></div>
-                        <div class="pt-4"><button type="submit" class="w-full py-3 bg-blue-600 text-white rounded font-bold text-sm shadow hover:bg-blue-700 transition-all">Complete Transfer</button></div>
-                    </form>
-                </div>`;
+            modal.innerHTML = `<div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border"><div class="p-6 bg-slate-50 border-b flex justify-between items-center font-bold text-xl">Asset Transfer / Edit<button onclick="closeModal()"><i data-lucide="x" class="w-6 h-6"></i></button></div><form onsubmit="handleEditMachineSubmit(event, '${id}')" class="p-8 space-y-4"><div class="space-y-1"><label class="text-[10px] font-bold uppercase">Transfer To (Custodian Name)</label><input required id="edit-m-cust" type="text" value="${m.custodian}" class="w-full p-2.5 border rounded"></div><div class="space-y-1"><label class="text-[10px] font-bold uppercase">Asset Identity</label><input required id="edit-m-name" type="text" value="${m.name}" class="w-full p-2.5 border rounded"></div><button type="submit" class="w-full py-3 bg-blue-600 text-white rounded font-bold">Complete Transfer</button></form></div>`;
             modal.classList.remove('hidden'); if (window.lucide) window.lucide.createIcons();
         }
-
-        async function handleEditMachineSubmit(e, id) { 
-            e.preventDefault(); 
-            const m = getMachine(id); 
-            m.custodian = document.getElementById('edit-m-cust').value; 
-            m.name = document.getElementById('edit-m-name').value; 
-            const sb = getSb();
-            if (sb) { try { await upsertMachine(m); } catch (err) { notifySbError('Machine update failed', err); } }
-            closeModal(); 
-            render(); 
-        }
-
+        async function handleEditMachineSubmit(e, id) { e.preventDefault(); const m = getMachine(id); m.custodian = document.getElementById('edit-m-cust').value; m.name = document.getElementById('edit-m-name').value; const sb = getSb(); if (sb) { try { await upsertMachine(m); } catch (err) { notifySbError('Machine update failed', err); } } closeModal(); render(); }
         function openAddModal() {
             const modal = document.getElementById('modal-container');
-            modal.innerHTML = `<div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border"><div class="sticky top-0 z-10 bg-white p-6 border-b flex justify-between items-center"><div class="flex items-center space-x-4"><button onclick="closeModal()"><i data-lucide="arrow-left" class="w-5 h-5"></i></button><h3 class="font-bold text-xl text-slate-800">Register Asset</h3></div><button onclick="closeModal()"><i data-lucide="x" class="w-6 h-6"></i></button></div><form onsubmit="handleNewMachine(event)" class="p-8 grid grid-cols-1 md:grid-cols-2 gap-6"><div class="col-span-2 space-y-1"><label class="text-[10px] font-bold uppercase text-slate-400">Machine Name</label><input required id="m-name" type="text" class="w-full p-2.5 border rounded text-sm focus:ring-2"></div><div class="space-y-1"><label class="text-[10px] font-bold uppercase text-slate-400">Make</label><input required id="m-make" type="text" class="w-full p-2.5 border rounded text-sm"></div><div class="space-y-1"><label class="text-[10px] font-bold uppercase text-slate-400">Model</label><input required id="m-model" type="text" class="w-full p-2.5 border rounded text-sm"></div><div class="space-y-1"><label class="text-[10px] font-bold uppercase text-slate-400">Internal SR No</label><input required id="m-sr" type="text" class="w-full p-2.5 border rounded text-sm"></div><div class="space-y-1"><label class="text-[10px] font-bold uppercase text-slate-400">OEM No</label><input required id="m-oem" type="text" class="w-full p-2.5 border rounded text-sm"></div><div class="space-y-1"><label class="text-[10px] font-bold uppercase text-slate-400">Entry Date</label><input required id="m-date" type="date" class="w-full p-2.5 border rounded text-sm"></div><div class="space-y-1"><label class="text-[10px] font-bold uppercase text-slate-400">Custodian</label><input required id="m-cust" type="text" class="w-full p-2.5 border rounded text-sm"></div><div class="col-span-2 pt-4 flex gap-4"><button type="button" onclick="closeModal()" class="flex-1 py-3 border rounded font-bold text-sm">Back</button><button type="submit" class="flex-1 py-3 bg-blue-600 text-white rounded font-bold text-sm shadow-md hover:bg-blue-700">Save Asset</button></div></form></div>`;
+            modal.innerHTML = `<div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border"><div class="sticky top-0 z-10 bg-white p-6 border-b flex justify-between items-center"><div class="flex items-center space-x-4"><button onclick="closeModal()"><i data-lucide="arrow-left" class="w-5 h-5"></i></button><h3 class="font-bold text-xl">Register Asset</h3></div><button onclick="closeModal()"><i data-lucide="x" class="w-6 h-6"></i></button></div><form onsubmit="handleNewMachine(event)" class="p-8 grid grid-cols-1 md:grid-cols-2 gap-6"><div class="col-span-2"><label class="text-[10px] font-bold uppercase">Machine Name</label><input required id="m-name" type="text" class="w-full p-2.5 border rounded"></div><div><label class="text-[10px] font-bold uppercase">Make</label><input required id="m-make" type="text" class="w-full p-2.5 border rounded"></div><div><label class="text-[10px] font-bold uppercase">Model</label><input required id="m-model" type="text" class="w-full p-2.5 border rounded"></div><div><label class="text-[10px] font-bold uppercase">Internal SR No</label><input required id="m-sr" type="text" class="w-full p-2.5 border rounded"></div><div><label class="text-[10px] font-bold uppercase">OEM No</label><input required id="m-oem" type="text" class="w-full p-2.5 border rounded"></div><div><label class="text-[10px] font-bold uppercase">Entry Date</label><input required id="m-date" type="date" class="w-full p-2.5 border rounded"></div><div><label class="text-[10px] font-bold uppercase">Custodian</label><input required id="m-cust" type="text" class="w-full p-2.5 border rounded"></div><div class="col-span-2 pt-4 flex gap-4"><button type="button" onclick="closeModal()" class="flex-1 py-3 border rounded font-bold">Back</button><button type="submit" class="flex-1 py-3 bg-blue-600 text-white rounded font-bold shadow-md">Save Asset</button></div></form></div>`;
             modal.classList.remove('hidden'); if (window.lucide) window.lucide.createIcons();
         }
-
         function openReceiveModal(id) {
             const modal = document.getElementById('modal-container');
-            modal.innerHTML = `<div class="bg-white rounded-2xl shadow-xl w-full max-w-lg border overflow-hidden"><div class="p-6 bg-green-50 border-b font-bold text-xl">Resolve breakdown<button onclick="closeModal()" class="float-right"><i data-lucide="x" class="w-6 h-6"></i></button></div><form onsubmit="handleReceiveSubmit(event, '${id}')" class="p-8 space-y-4"><div class="space-y-1"><label class="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Actual Diagnosis</label><textarea required id="res-actual" rows="3" class="w-full p-2.5 border rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none"></textarea></div><div class="space-y-1"><label class="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Parts Used</label><input required id="res-parts" type="text" class="w-full p-2.5 border rounded text-sm"></div><div class="space-y-1"><label class="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Receive Date</label><input required id="res-date" type="date" value="${new Date().toISOString().split('T')[0]}" class="w-full p-2.5 border rounded text-sm"></div><button type="submit" class="w-full py-3 bg-green-600 text-white rounded font-bold text-sm shadow hover:bg-green-700">Resolve</button></form></div>`;
+            modal.innerHTML = `<div class="bg-white rounded-2xl shadow-xl w-full max-w-lg border overflow-hidden"><div class="p-6 bg-green-50 border-b font-bold text-xl">Resolve breakdown<button onclick="closeModal()" class="float-right"><i data-lucide="x" class="w-6 h-6"></i></button></div><form onsubmit="handleReceiveSubmit(event, '${id}')" class="p-8 space-y-4"><div class="space-y-1"><label class="text-[10px] font-bold uppercase tracking-widest">Actual Diagnosis</label><textarea required id="res-actual" rows="3" class="w-full p-2.5 border rounded"></textarea></div><div class="space-y-1"><label class="text-[10px] font-bold uppercase tracking-widest">Parts Used</label><input required id="res-parts" type="text" class="w-full p-2.5 border rounded"></div><div class="space-y-1"><label class="text-[10px] font-bold uppercase tracking-widest">Receive Date</label><input required id="res-date" type="date" value="${new Date().toISOString().split('T')[0]}" class="w-full p-2.5 border rounded"></div><button type="submit" class="w-full py-3 bg-green-600 text-white rounded font-bold">Resolve</button></form></div>`;
             modal.classList.remove('hidden'); if (window.lucide) window.lucide.createIcons();
         }
-
         function openScrapModal(id) {
             const modal = document.getElementById('modal-container');
-            modal.innerHTML = `<div class="bg-white rounded-2xl shadow-xl w-full max-w-lg border border-red-100 overflow-hidden"><div class="p-6 bg-red-50 font-bold text-xl text-red-800">Scrap Approval<button onclick="closeModal()" class="float-right"><i data-lucide="x" class="w-6 h-6"></i></button></div><form onsubmit="handleScrapSubmit(event, '${id}')" class="p-8 space-y-4"><div class="space-y-1"><label class="text-[10px] font-bold uppercase text-slate-400">Authority Name</label><input required id="s-approver" type="text" class="w-full p-2.5 border rounded text-sm"></div><div class="space-y-1"><label class="text-[10px] font-bold uppercase text-slate-400">Reason</label><textarea required id="s-reason" rows="3" class="w-full p-2.5 border rounded text-sm"></textarea></div><button type="submit" class="w-full py-3 bg-red-600 text-white rounded font-bold text-sm">Decommission</button></form></div>`;
+            modal.innerHTML = `<div class="bg-white rounded-2xl shadow-xl w-full max-w-lg border border-red-100 overflow-hidden"><div class="p-6 bg-red-50 font-bold text-xl text-red-800">Scrap Approval<button onclick="closeModal()" class="float-right"><i data-lucide="x" class="w-6 h-6"></i></button></div><form onsubmit="handleScrapSubmit(event, '${id}')" class="p-8 space-y-4"><div class="space-y-1"><label class="text-[10px] font-bold uppercase">Authority Name</label><input required id="s-approver" type="text" class="w-full p-2.5 border rounded"></div><div class="space-y-1"><label class="text-[10px] font-bold uppercase">Reason</label><textarea required id="s-reason" rows="3" class="w-full p-2.5 border rounded"></textarea></div><button type="submit" class="w-full py-3 bg-red-600 text-white rounded font-bold">Decommission</button></form></div>`;
             modal.classList.remove('hidden'); if (window.lucide) window.lucide.createIcons();
         }
-
         function renderDeepDive(id) {
             const m = getMachine(id);
             const rHistory = state.repairs.filter(r => r.machineId === id);
             const aHistory = state.amcJobs.filter(j => j.machineId === id);
             const lifeString = calculateLifeValue(m.issueDate, m.status === 'Scrapped' ? m.scrapDate : null, state.lifeDisplayMode);
-            const container = document.getElementById('content-area');
-            container.innerHTML = `<div class="space-y-6 animate-in fade-in duration-300"><button onclick="switchView('${m.status === 'Active' ? 'machines' : 'scrap'}')" class="flex items-center space-x-2 text-slate-500 font-bold group hover:text-slate-900 transition-colors"><i data-lucide="arrow-left" class="w-4 h-4 group-hover:-translate-x-1 transition-transform"></i><span>Back to List</span></button><div class="grid grid-cols-1 lg:grid-cols-3 gap-6"><div class="lg:col-span-1 bg-white rounded-2xl border shadow-sm overflow-hidden h-fit"><div class="bg-slate-900 p-6 text-white font-bold text-xl">${m.name}</div><div class="p-6 space-y-4"><div onclick="cycleLifeMode('${m.id}')" class="bg-blue-600 p-4 rounded-xl flex flex-col items-center cursor-pointer hover:bg-blue-700 transition-all shadow-md group"><p class="text-[9px] font-black text-blue-200 uppercase tracking-widest mb-1 text-center">Actual Machine Life</p><p class="text-2xl font-black text-white tracking-tight">${lifeString}</p><p class="text-[10px] text-blue-100 font-medium mt-1 uppercase text-center">Click to toggle (M/D/Y)</p></div><div class="grid grid-cols-2 gap-4 text-sm"><div><p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Make/Model</p><p class="font-semibold text-slate-700">${m.make} ${m.model}</p></div><div><p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Custodian</p><p class="font-semibold text-slate-700">${m.custodian}</p></div><div><p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">SR No</p><p class="text-xs font-mono text-slate-600">${m.srNo}</p></div><div><p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Production Entry</p><p class="text-xs font-bold text-slate-600">${m.issueDate}</p></div></div>${m.status === 'Scrapped' ? `<hr /><div class="bg-red-50 p-4 rounded border border-red-100 text-[11px] font-medium"><p class="font-bold text-red-700 uppercase mb-2">Scrap Audit</p><p><b>Date:</b> ${m.scrapDate}</p><p><b>Authority:</b> ${m.approvedBy}</p><p class="italic text-slate-600 mt-1">"${m.scrapReason}"</p></div>` : ''}</div></div><div class="lg:col-span-2 space-y-6"><div class="bg-white rounded-xl border h-[400px] overflow-y-auto custom-scrollbar shadow-sm"><div class="p-4 bg-slate-50 border-b font-bold text-[10px] uppercase text-slate-400 tracking-widest">Comprehensive Breakdown History</div><div class="divide-y divide-slate-100">${rHistory.map(r => `<div class="p-4 hover:bg-slate-50"><div class="flex justify-between items-start mb-1"><p class="font-bold text-slate-800 text-xs">${r.problem}</p><span class="text-[9px] px-2 py-0.5 rounded-full font-black uppercase ${r.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}">${r.status}</span></div><p class="text-[10px] text-slate-500">Sent: ${r.sentToStore} • Received: ${r.receivedDate || 'N/A'}</p>${r.actualProblem ? `<p class="text-[10px] mt-2 text-blue-600 font-medium bg-blue-50 p-2 rounded"><b>Resolution:</b> ${r.actualProblem}</p>` : ''}</div>`).join('') || '<p class="p-10 text-center text-slate-300 italic">No history.</p>'}</div></div><div class="bg-white rounded-xl border h-[200px] overflow-y-auto custom-scrollbar shadow-sm"><div class="p-4 bg-slate-50 border-b font-bold text-[10px] uppercase text-slate-400 tracking-widest">AMC Records</div><div class="divide-y divide-slate-100">${aHistory.map(j => `<div class="p-4 hover:bg-slate-50"><div class="flex justify-between mb-1"><p class="font-bold text-xs text-slate-900">${j.technician}</p><p class="text-[10px] font-bold text-slate-400">${j.date}</p></div><p class="text-[10px] italic text-slate-600">Work: ${j.workDone}</p></div>`).join('') || '<p class="p-10 text-center text-slate-300 italic">No history.</p>'}</div></div></div></div></div>`;
+            document.getElementById('content-area').innerHTML = `<div class="space-y-6"><button onclick="switchView('${m.status === 'Active' ? 'machines' : 'scrap'}')" class="flex items-center space-x-2 text-slate-500 font-bold group hover:text-slate-900"><i data-lucide="arrow-left" class="w-4 h-4 group-hover:-translate-x-1 transition-transform"></i><span>Back to List</span></button><div class="grid grid-cols-1 lg:grid-cols-3 gap-6"><div class="lg:col-span-1 bg-white rounded-2xl border shadow-sm overflow-hidden h-fit"><div class="bg-slate-900 p-6 text-white font-bold text-xl">${m.name}</div><div class="p-6 space-y-4"><div onclick="cycleLifeMode('${m.id}')" class="bg-blue-600 p-4 rounded-xl flex flex-col items-center cursor-pointer hover:bg-blue-700 transition-all shadow-md group"><p class="text-[9px] font-black text-blue-200 uppercase tracking-widest mb-1 text-center">Actual Machine Life</p><p class="text-2xl font-black text-white tracking-tight">${lifeString}</p><p class="text-[10px] text-blue-100 font-medium mt-1 uppercase text-center">Click to toggle (M/D/Y)</p></div><div class="grid grid-cols-2 gap-4 text-sm"><div><p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Make/Model</p><p class="font-semibold text-slate-700">${m.make} ${m.model}</p></div><div><p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Custodian</p><p class="font-semibold text-slate-700">${m.custodian}</p></div><div><p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">SR No</p><p class="text-xs font-mono text-slate-600">${m.srNo}</p></div><div><p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Production Entry</p><p class="text-xs font-bold text-slate-600">${m.issueDate}</p></div></div>${m.status === 'Scrapped' ? `<hr /><div class="bg-red-50 p-4 rounded border border-red-100 text-[11px] font-medium"><p class="font-bold text-red-700 uppercase mb-2">Scrap Audit</p><p><b>Date:</b> ${m.scrapDate}</p><p><b>Authority:</b> ${m.approvedBy}</p><p class="italic text-slate-600 mt-1">"${m.scrapReason}"</p></div>` : ''}</div></div><div class="lg:col-span-2 space-y-6"><div class="bg-white rounded-xl border h-[400px] overflow-y-auto custom-scrollbar shadow-sm"><div class="p-4 bg-slate-50 border-b font-bold text-[10px] uppercase text-slate-400">Comprehensive Breakdown History</div><div class="divide-y divide-slate-100">${rHistory.map(r => `<div class="p-4 hover:bg-slate-50"><div class="flex justify-between items-start mb-1"><p class="font-bold text-slate-800 text-xs">${r.problem}</p><span class="text-[9px] px-2 py-0.5 rounded-full font-black uppercase ${r.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}">${r.status}</span></div><p class="text-[10px] text-slate-500">Sent: ${r.sentToStore} • Received: ${r.receivedDate || 'N/A'}</p>${r.actualProblem ? `<p class="text-[10px] mt-2 text-blue-600 font-medium bg-blue-50 p-2 rounded"><b>Resolution:</b> ${r.actualProblem}</p>` : ''}</div>`).join('') || '<p class="p-10 text-center text-slate-300 italic">No history.</p>'}</div></div><div class="bg-white rounded-xl border h-[200px] overflow-y-auto custom-scrollbar shadow-sm"><div class="p-4 bg-slate-50 border-b font-bold text-[10px] uppercase text-slate-400">AMC Records</div><div class="divide-y divide-slate-100">${aHistory.map(j => `<div class="p-4 hover:bg-slate-50"><div class="flex justify-between mb-1"><p class="font-bold text-xs text-slate-900">${j.technician}</p><p class="text-[10px] font-bold text-slate-400">${j.date}</p></div><p class="text-[10px] italic text-slate-600">Work: ${j.workDone}</p></div>`).join('') || '<p class="p-10 text-center text-slate-300 italic">No history.</p>'}</div></div></div></div></div>`;
             if (window.lucide) window.lucide.createIcons();
         }
-
-        function renderScrapHistory(scrapped) { return `<div class="bg-white rounded-xl border overflow-hidden shadow-sm"><table class="w-full text-left"><thead class="bg-slate-50 text-[10px] uppercase font-bold text-slate-500 border-b"><tr><th class="px-6 py-4">Machine</th><th class="px-6 py-4 text-center">Date</th><th class="px-6 py-4 text-center">Audit</th></tr></thead><tbody class="divide-y">${scrapped.map(m => `<tr><td class="px-6 py-4 font-bold text-slate-700">${m.name}<br><span class="text-xs font-mono text-slate-400">${m.srNo}</span></td><td class="px-6 py-4 font-bold text-red-600">${m.scrapDate}</td><td class="px-6 py-4 text-center"><button onclick="renderDeepDive('${m.id}')" class="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-sm">View Trail</button></td></tr>`).join('') || '<tr><td colspan="3" class="p-10 text-center italic text-slate-300">Archives Empty</td></tr>'}</tbody></table></div>`; }
-
-        async function handleReceiveSubmit(e, id) { 
-            e.preventDefault(); 
-            const r = getRepair(id); 
-            r.status = 'Completed'; 
-            r.actualProblem = document.getElementById('res-actual').value; 
-            r.partsReplaced = document.getElementById('res-parts').value; 
-            r.receivedDate = document.getElementById('res-date').value; 
-            const sb = getSb();
-            if (sb) { try { await upsertRepair(r); } catch (err) { notifySbError('Repair resolution save failed', err); } }
-            closeModal(); 
-            render(); 
+        async function handleReceiveSubmit(e, id) { e.preventDefault(); const r = getRepair(id); r.status = 'Completed'; r.actualProblem = document.getElementById('res-actual').value; r.partsReplaced = document.getElementById('res-parts').value; r.receivedDate = document.getElementById('res-date').value; const sb = getSb(); if (sb) { try { await upsertRepair(r); } catch (err) { notifySbError('Repair resolution save failed', err); } } closeModal(); render(); }
+        async function handleScrapSubmit(e, id) { e.preventDefault(); const m = getMachine(id); m.status = 'Scrapped'; m.scrapDate = new Date().toISOString().split('T')[0]; m.approvedBy = document.getElementById('s-approver').value; m.scrapReason = document.getElementById('s-reason').value; const sb = getSb(); if (sb) { try { await upsertMachine(m); } catch (err) { notifySbError('Machine scrap save failed', err); } } closeModal(); render(); }
+        async function handleNewMachine(e) { e.preventDefault(); const m = { id: 'M' + Date.now(), name: document.getElementById('m-name').value, make: document.getElementById('m-make').value, model: document.getElementById('m-model').value, srNo: document.getElementById('m-sr').value, oemSrNo: document.getElementById('m-oem').value, issueDate: document.getElementById('m-date').value, custodian: document.getElementById('m-cust').value, status: 'Active' }; state.machines.push(m); const sb = getSb(); if (sb) { try { await upsertMachine(m); } catch (err) { notifySbError('Machine insert failed', err); } } closeModal(); render(); }
+        function closeModal() { 
+            if (repairScanner && repairScanner.isScanning) repairScanner.stop().catch(e=>console.warn);
+            document.getElementById('modal-container').classList.add('hidden'); 
         }
-        async function handleScrapSubmit(e, id) { 
-            e.preventDefault(); 
-            const m = getMachine(id); 
-            m.status = 'Scrapped'; 
-            m.scrapDate = new Date().toISOString().split('T')[0]; 
-            m.approvedBy = document.getElementById('s-approver').value; 
-            m.scrapReason = document.getElementById('s-reason').value; 
-            const sb = getSb();
-            if (sb) { try { await upsertMachine(m); } catch (err) { notifySbError('Machine scrap save failed', err); } }
-            closeModal(); 
-            render(); 
-        }
-        async function handleNewMachine(e) { 
-            e.preventDefault(); 
-            const m = { 
-                id: 'M' + Date.now(), 
-                name: document.getElementById('m-name').value, 
-                make: document.getElementById('m-make').value, 
-                model: document.getElementById('m-model').value, 
-                srNo: document.getElementById('m-sr').value, 
-                oemSrNo: document.getElementById('m-oem').value, 
-                issueDate: document.getElementById('m-date').value, 
-                custodian: document.getElementById('m-cust').value, 
-                status: 'Active' 
-            }; 
-            state.machines.push(m); 
-            const sb = getSb();
-            if (sb) { try { await upsertMachine(m); } catch (err) { notifySbError('Machine insert failed', err); } }
-            closeModal(); 
-            render(); 
-        }
-        function closeModal() { document.getElementById('modal-container').classList.add('hidden'); }
 
         window.onload = async () => {
             await loadStateFromSupabase();
